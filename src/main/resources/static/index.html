@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Open Boxes</title>
+		<title>boxes</title>
 		
 		<script src="/boxes/js/jquery.min.js"></script>
     	<script src="/boxes/js/sockjs.min.js"></script>
@@ -9,6 +9,7 @@
 
     	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
     	<link rel="stylesheet" href="/boxes/css/main.css">
+    	<link rel="shortcut icon" type="image/png" href="/boxes/img/1.png"/>
 	</head>
 	<body>
 		<noscript>Please Enable Javascript</noscript>
@@ -24,16 +25,30 @@
 			<h3>Box Count</h3>
 			<h1 id="boxNum">Connecting</h1>
 		</div>
+		
 		<div class="background"></div>
-		<audio id="bell" src="/boxes/sound/bell.wav" preload="auto"></audio>
+		<audio id="bell0" src="/boxes/sound/bell.wav" preload="auto"></audio>
+		<audio id="bell1" src="/boxes/sound/bell.wav" preload="auto"></audio>
+		<audio id="bell2" src="/boxes/sound/bell.wav" preload="auto"></audio>
+		<audio id="bell3" src="/boxes/sound/bell.wav" preload="auto"></audio>
+		<audio id="bell4" src="/boxes/sound/bell.wav" preload="auto"></audio>
+
+		<audio id="tap0" src="/boxes/sound/tap.wav" preload="auto"></audio>
+		<audio id="tap1" src="/boxes/sound/tap.wav" preload="auto"></audio>
+		<audio id="tap2" src="/boxes/sound/tap.wav" preload="auto"></audio>
+		<audio id="tap3" src="/boxes/sound/tap.wav" preload="auto"></audio>
+		<audio id="tap4" src="/boxes/sound/tap.wav" preload="auto"></audio>
+
 
 		<script>
 			var stompClient = null;
-			var totalNum = 0, remainingNum = 0, boxNum = -1, animation = 0, newBoxNum = 0, imageIdx = 0, effect = 0, count = 0;
+			var totalNum = 0, remainingNum = 0, boxNum = -1, animation = 0, newBoxNum = 0, imageIdx = 0, effect = 0, count = 0, bellIndex = 0, tapIndex = 0;
 			var ctx;
 			var c;
 
 			let images = [];
+			var bell = [];
+			var tap = [];
 
 			function connect() {
 				var socket = new SockJS('/boxes/connect-endpoint');
@@ -55,12 +70,16 @@
 
 			function updateLabels(response) {
 				if(boxNum < JSON.parse(response.body).boxNum) {
-					document.getElementById('bell').play();
+					document.getElementById('bell' + bellIndex + '').play();
+					bellIndex = (bellIndex + 1) % 5;
 
 					$("#remainingNum").text("0");
 					animation = 60;
 					count = 0;
 				}
+
+				document.getElementById('tap' + tapIndex + '').play();
+				tapIndex = (tapIndex + 1) % 5;
 
 				newBoxNum = JSON.parse(response.body).boxNum;
 				totalNum = JSON.parse(response.body).totalNum;
