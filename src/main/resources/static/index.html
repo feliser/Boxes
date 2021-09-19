@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Open Boxes</title>
+		
+		<script src="/boxes/js/jquery.min.js"></script>
+    	<script src="/boxes/js/sockjs.min.js"></script>
+    	<script src="/boxes/js/stomp.min.js"></script>
+
+    	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+    	<link rel="stylesheet" href="/boxes/css/main.css">
+	</head>
+	<body>
+		<noscript>Please Enable Javascript</noscript>
+
+		<div class="content">
+			<h3>Total Clicks</h3>
+			<h1 id="totalNum">Connecting</h1>
+			<h3>Clicks Remaining</h3>
+			<h1 id="remainingNum">Connecting</h1>
+
+			<canvas id="mainCanvas" width=400 height=400> </canvas>
+
+			<h3>Box Count</h3>
+			<h1 id="boxNum">Connecting</h1>
+		</div>
+		<div class="background"></div>
+		<audio id="bell" src="/boxes/sound/bell.wav" preload="auto"></audio>
+
+		<script>
+			var stompClient = null;
+			var totalNum = 0, remainingNum = 0, boxNum = -1, animation = 0, newBoxNum = 0, imageIdx = 0, effect = 0, count = 0;
+			var ctx;
+			var c;
+
+			let images = [];
+
+			function connect() {
+				var socket = new SockJS('/boxes/connect-endpoint');
+				stompClient = Stomp.over(socket);
+				stompClient.connect({}, function(frame) {
+					console.log('connected: ' + frame);
+					stompClient.subscribe('/gamestate/updates', function(response) {
+						updateLabels(response);
+					});
+				
+					requestUpdate(false);
+				});
+			}
+
+			function requestUpdate(click) {
+				console.log("requesting update");
+				stompClient.send("/boxes/updates/request", {}, JSON.stringify({'boxPressed':click}));
+			}
+
+			function updateLabels(response) {
+				if(boxNum < JSON.parse(response.body).boxNum) {
+					document.getElementById('bell').play();
+
+					$("#remainingNum").text("0");
+					animation = 60;
+					count = 0;
+				}
+
+				newBoxNum = JSON.parse(response.body).boxNum;
+				totalNum = JSON.parse(response.body).totalNum;
+  				remainingNum = JSON.parse(response.body).remainingNum;
+
+				$("#totalNum").text(totalNum);
+
+				if(animation == 0) {
+					$("#remainingNum").text(remainingNum);
+					$("#boxNum").text(newBoxNum);
+					effect++;
+				}
+			}
+
+			function init() {
+				c = document.getElementById("mainCanvas");
+				ctx = c.getContext("2d");
+
+				for(let i=0; i<=12; i++) {
+					var img = new Image();
+					img.src = "/boxes/img/"+i+".png";
+					images.push(img);
+				}
+
+				c.addEventListener('click', function(event) {
+					if(animation == 0) {
+						requestUpdate(true);
+					}
+				}, false);
+
+				setInterval(draw, 32);
+				connect();
+			}
+
+			window.onload = init();
+
+			function draw() {
+				ctx.clearRect(0, 0, c.width, c.height);
+				ctx.imageSmoothingEnabled = false;
+
+				if(animation == 0) {
+					ctx.filter = "brightness("+(100+effect*20)+"%)";
+
+					if(boxNum > 0) imageIdx = ((boxNum - 1) % 12) + 1;
+					ctx.drawImage(images[imageIdx], -202 + effect * 10, -160 + effect * 10, 800 - effect * 20, 800 - effect * 20);
+				} else {
+					var frame = 60 - animation + 1;
+					if(frame <= 10) {
+						ctx.filter = "brightness("+(100-frame*10)+"%)";
+
+						if(boxNum > 0) imageIdx = ((boxNum - 1) % 12) + 1;
+						ctx.drawImage(images[imageIdx], -202 + frame * 10, -160 + frame * 10, 800 - frame * 20, 800 - frame * 20);
+					} else if(frame <= 50) {
+						if(frame == 30) {
+							boxNum = newBoxNum;
+							$("#boxNum").text(boxNum);
+						}
+
+						ctx.filter = "brightness(0%)";
+						if(boxNum > 0) imageIdx = ((boxNum - 1) % 12) + 1;
+						ctx.drawImage(images[imageIdx], -202 + 10 * 10, -160 + 10 * 10, 800 - 10 * 20, 800 - 10 * 20);
+
+						$("#remainingNum").text(Math.round(remainingNum * ((1 / 40) * (frame - 10))));
+					} else {
+						ctx.filter = "brightness("+(100-animation*10)+"%)";
+
+						$("#remainingNum").text(remainingNum);
+						if(boxNum > 0) imageIdx = ((boxNum - 1) % 12) + 1;
+						ctx.drawImage(images[imageIdx], -202 + animation * 10, -160 + animation * 10, 800 - animation * 20, 800 - animation * 20);
+					}
+					
+					animation--;
+				}
+
+				if(effect > 0) effect--;
+			}
+		</script>
+	</body>
+</html>
